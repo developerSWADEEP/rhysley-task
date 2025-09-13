@@ -119,8 +119,11 @@ Future<void> startLocationTrackingService() async {
         isRunning: true,
       );
       
-      // Listen to native service location updates
-      _listenToNativeLocationUpdates();
+  // Listen to native service location updates
+  _listenToNativeLocationUpdates();
+  
+  // Also listen to background location updates for killed app scenarios
+  _listenToBackgroundLocationUpdates();
     } else {
       print("⚠️ Native service failed, falling back to Flutter service");
       
@@ -191,6 +194,64 @@ void _listenToNativeLocationUpdates() {
     print("❌ Error listening to native location updates: $error");
   }, onDone: () {
     print("🔚 Native location stream closed");
+  });
+}
+
+// Listen to background location updates for killed app scenarios
+void _listenToBackgroundLocationUpdates() {
+  print("🎧 Listening to background location updates (killed app scenario)");
+  
+  NativeLocationService.backgroundLocationStream.listen((data) {
+    print("📍 Background location update received: $data");
+    
+    if (data.containsKey('latitude') && data.containsKey('longitude')) {
+      final latitude = data['latitude'] as double;
+      final longitude = data['longitude'] as double;
+      final accuracy = data['accuracy'] as double? ?? 0.0;
+      final isSignificantChange = data['isSignificantChange'] as bool? ?? false;
+      final source = data['source'] as String? ?? 'unknown';
+      
+      print("📍 Processing background location:");
+      print("📍 Lat: $latitude, Lng: $longitude, Accuracy: ${accuracy}m");
+      print("📍 Significant change: $isSignificantChange, Source: $source");
+      
+      // Send to server with enhanced data
+      _sendBackgroundLocationToServer(latitude, longitude, accuracy, isSignificantChange, source);
+      
+      // Show notification for significant changes
+      if (isSignificantChange) {
+        NotificationService.showLocationNotification(
+          latitude: latitude,
+          longitude: longitude,
+          accuracy: accuracy,
+          speed: data['speed'] as double? ?? 0.0,
+        );
+      }
+    }
+    
+    // Handle service status updates
+    if (data.containsKey('status')) {
+      final status = data['status'] as String;
+      final message = data['message'] as String? ?? '';
+      
+      print("📊 Background service status: $status - $message");
+      
+      if (status == 'started') {
+        NotificationService.showServiceStatusNotification(
+          title: "✅ Background Location Active",
+          message: "Location tracking continues even when app is killed",
+          isRunning: true,
+        );
+      } else if (status == 'stopped') {
+        NotificationService.showServiceStatusNotification(
+          title: "🛑 Background Location Stopped",
+          message: "Location tracking has been stopped",
+          isRunning: false,
+        );
+      }
+    }
+  }, onError: (error) {
+    print("❌ Error listening to background location updates: $error");
   });
 }
 
@@ -524,6 +585,44 @@ Future<void> _sendLocationToServer(double lat, double lng, int userId) async {
     "lat": lat,
     "lng": lng
   }, withAuth: true);
+}
+
+Future<void> _sendBackgroundLocationToServer(double lat, double lng, double accuracy, bool isSignificantChange, String source) async {
+  final apiService = ApiService();
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString("token");
+  final userId = prefs.getInt("userId");
+  
+  if (token == null || userId == null) {
+    print("❌ No token or userId available for background location API");
+    return;
+  }
+
+  print("📍 Sending background location: lat=$lat, lng=$lng, userId=$userId");
+  print("📍 Accuracy: ${accuracy}m, Significant: $isSignificantChange, Source: $source");
+  
+  try {
+    await apiService.post(ApiConstants.location, {
+      "user_id": userId,
+      "lat": lat,
+      "lng": lng,
+      "accuracy": accuracy,
+      "isSignificantChange": isSignificantChange,
+      "source": source,
+      "timestamp": DateTime.now().millisecondsSinceEpoch,
+      "backgroundMode": true,
+    }, withAuth: true);
+    
+    print("✅ Background location sent successfully to server");
+  } catch (e) {
+    print("❌ Failed to send background location: $e");
+    
+    // Store failed location for retry
+    final failedLocation = "lat:$lat,lng:$lng,accuracy:$accuracy,significant:$isSignificantChange,source:$source,userId:$userId,timestamp:${DateTime.now().millisecondsSinceEpoch}";
+    final failedLocations = prefs.getStringList("failed_background_locations") ?? [];
+    failedLocations.add(failedLocation);
+    await prefs.setStringList("failed_background_locations", failedLocations);
+  }
 }
 
 Future<void> _storeFailedLocation(Position position, int userId) async {

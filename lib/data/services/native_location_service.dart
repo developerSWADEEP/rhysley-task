@@ -45,4 +45,25 @@ class NativeLocationService {
       return <String, dynamic>{};
     });
   }
+  
+  // Enhanced method to handle background location updates
+  static Stream<Map<String, dynamic>> get backgroundLocationStream {
+    return _eventChannel.receiveBroadcastStream().map((data) {
+      if (data is Map) {
+        final locationData = Map<String, dynamic>.from(data);
+        
+        // Log background location updates
+        if (locationData.containsKey('latitude') && locationData.containsKey('longitude')) {
+          print("📍 Background location update received:");
+          print("📍 Lat: ${locationData['latitude']}, Lng: ${locationData['longitude']}");
+          print("📍 Accuracy: ${locationData['accuracy']}m");
+          print("📍 Significant change: ${locationData['isSignificantChange']}");
+          print("📍 Source: ${locationData['source']}");
+        }
+        
+        return locationData;
+      }
+      return <String, dynamic>{};
+    });
+  }
 }

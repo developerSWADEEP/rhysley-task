@@ -45,5 +45,17 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+		<string>background-processing</string>
+		<string>background-fetch</string>
+	</array>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app needs access to location to track your position continuously, even when the app is closed or killed by the user.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>This app needs access to location to track your position while using the app.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>This app needs access to location to track your position continuously, even when the app is closed or killed by the user.</string>
 </dict>
 </plist>
