@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../widgets/custom_button.dart';
 import 'home_screen.dart';
 import '../../providers/auth_provider.dart';
+import '../../data/services/background_location.dart';
 import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -448,6 +449,10 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
             ),
           ),
         );
+        
+        // Temporarily disabled background service to prevent crashes
+        // TODO: Re-enable after fixing notification issues
+        print("⚠️ Background service temporarily disabled to prevent crashes");
         
         // Navigate to home screen
         Navigator.pushReplacement(

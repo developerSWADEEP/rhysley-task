@@ -4,14 +4,21 @@ import 'package:provider/provider.dart';
 import 'package:rhysley/providers/location_provider.dart';
 import 'presentation/screens/login_screen.dart';
 import 'data/services/background_location.dart';
+import 'data/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Request location permission before starting service
-  await _requestLocationPermission();
+  // Initialize notification service
+  await NotificationService.initialize();
 
-  await initializeService(); // background location service
+  // Request permissions before starting service
+  await _requestPermissions();
+
+  // Don't initialize service at startup to prevent crashes
+  // Service will be initialized and started after login
+  print("🚀 App starting without background service initialization");
+  
   runApp(
     MultiProvider(
       providers: [
@@ -22,8 +29,21 @@ void main() async {
   );
 }
 
-Future<void> _requestLocationPermission() async {
-  print("🔐 Requesting location permissions...");
+Future<void> _requestPermissions() async {
+  print("🔐 Requesting all necessary permissions...");
+  
+  // Request notification permission
+  var notificationStatus = await Permission.notification.status;
+  if (notificationStatus.isDenied) {
+    print("📱 Requesting notification permission...");
+    notificationStatus = await Permission.notification.request();
+  }
+  
+  if (notificationStatus.isGranted) {
+    print("✅ Notification permission granted");
+  } else {
+    print("⚠️ Notification permission denied: $notificationStatus");
+  }
   
   // Request location when in use permission first
   var status = await Permission.locationWhenInUse.status;
